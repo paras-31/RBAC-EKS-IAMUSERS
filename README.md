@@ -213,6 +213,47 @@ kubectl apply -f aws_auth.yml
 
 ---
 
+### 4.1. **⚠️ CRITICAL: Export Current aws-auth ConfigMap from Cluster**
+```bash
+kubectl get configmap aws-auth -n kube-system -o yaml > aws_auth.yml
+```
+**Output:**
+```yaml
+apiVersion: v1
+data:
+  mapRoles: |
+    - rolearn: arn:aws:iam::154292417400:role/eksctl-eksdemo1-nodegroup-ng-d10da-NodeInstanceRole-zOsFnaDThoyG
+      groups:
+      - system:bootstrappers
+      - system:nodes
+      username: system:node:{{EC2PrivateDNSName}}
+  mapUsers: |
+    - userarn: arn:aws:iam::154292417400:user/eks-user
+      username: eks-user
+      groups:
+      - trainee-clusterrole
+kind: ConfigMap
+metadata:
+  name: aws-auth
+  namespace: kube-system
+```
+
+**Purpose:** Exports the current aws-auth ConfigMap from the running EKS cluster to a YAML file for version control and backup.
+
+**Why this is CRITICAL:**
+- **Preserves existing configuration:** The aws-auth ConfigMap contains node IAM role mappings that are essential for the cluster to function. Losing this can break node communication.
+- **Enables version control:** Keeps a Git-tracked copy of your IAM-to-Kubernetes user mappings for auditing and disaster recovery.
+- **Prevents accidental deletion:** If you recreate aws_auth.yml from scratch, you might forget existing roles/users and break the cluster.
+- **Merger tool for updates:** When adding new IAM users, export first, then manually merge your changes instead of overwriting.
+
+**Important workflow:**
+1. Always export the current aws-auth ConfigMap before modifying it
+2. Compare your changes: `diff aws_auth_backup.yml aws_auth.yml`
+3. Apply changes carefully: `kubectl apply -f aws_auth.yml`
+4. Verify with: `kubectl get configmap aws-auth -n kube-system -o yaml`
+
+---
+
 ### 5. **Deploy Kubernetes Resources**
 ```bash
 # Deploy a secret
